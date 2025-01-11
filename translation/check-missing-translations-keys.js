@@ -1,10 +1,11 @@
 const fs = require("fs");
 const path = require("path");
+const { translationsConfig } = require("./translations.config");
 
 // Update paths for direct json files
-const localesDir = path.join(__dirname, "messages");
-const baseLanguage = "en";
-const compareLanguage = "ar";
+const localesDir = path.join(__dirname, translationsConfig.messagesDir);
+const baseLanguage = translationsConfig.baseLanguage;
+const compareLanguage = translationsConfig.compareLanguage;
 
 // File paths
 const baseFilePath = path.join(localesDir, `${baseLanguage}.json`);
@@ -85,7 +86,7 @@ try {
 	);
 
 	// Read all files in the app directory
-	const appDir = path.join(__dirname, "app");
+	const appDir = path.join(__dirname, translationsConfig.codeBase);
 	const files = readFilesRecursively(appDir);
 
 	// Extract translation keys from all files
