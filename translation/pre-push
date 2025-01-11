@@ -1,0 +1,9 @@
+
+
+node check-missing-translations-keys.js
+if [ $? -ne 0 ]; then
+  echo "Translation keys are missing, cancelling push"
+  exit 1
+fi
+
+echo "All checks passed, proceeding with push"
