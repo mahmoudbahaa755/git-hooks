@@ -1,0 +1,1 @@
+'node spell-check.js "$1" ';
