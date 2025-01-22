@@ -1,150 +1,170 @@
 const fs = require("fs");
 const path = require("path");
-const { translationsConfig } = require("./translations.config");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+require("dotenv").config();
+const apiKey = process.env.GOOGLE_AI_API_KEY;
+if (!apiKey) {
+  console.error(
+    "API key not found. Please set the GOOGLE_AI_API_KEY environment variable.",
+  );
+  process.exit(1);
+}
 
-// Update paths for direct json files
-const localesDir = path.join(__dirname, translationsConfig.messagesDir);
-const baseLanguage = translationsConfig.baseLanguage;
-const compareLanguage = translationsConfig.compareLanguage;
+// Initialize Google AI
+const genAI = new GoogleGenerativeAI(apiKey);
 
-// File paths
+// Configuration
+const localesDir = path.join(__dirname, "messages");
+const baseLanguage = "en";
+const compareLanguage = "ar";
 const baseFilePath = path.join(localesDir, `${baseLanguage}.json`);
 const compareFilePath = path.join(localesDir, `${compareLanguage}.json`);
 
-// Function to get nested keys
+// Helper functions
 const getKeys = (obj, prefix = "") =>
-	Object.entries(obj).reduce((keys, [key, value]) => {
-		const fullKey = prefix ? `${prefix}.${key}` : key;
-		if (typeof value === "object" && value !== null) {
-			keys.push(...getKeys(value, fullKey));
-		} else {
-			keys.push(fullKey);
-		}
-		return keys;
-	}, []);
+  Object.entries(obj).reduce((keys, [key, value]) => {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (typeof value === "object" && value !== null) {
+      keys.push(...getKeys(value, fullKey));
+    } else {
+      keys.push(fullKey);
+    }
+    return keys;
+  }, []);
 
-// Function to recursively read all files in a directory
-const readFilesRecursively = (dir) => {
-	let results = [];
-	const list = fs.readdirSync(dir);
-	list.forEach((file) => {
-		file = path.join(dir, file);
-		const stat = fs.statSync(file);
-		if (stat && stat.isDirectory()) {
-			results = results.concat(readFilesRecursively(file));
-		} else {
-			results.push(file);
-		}
-	});
-	return results;
+const getNestedValue = (obj, keyPath) => {
+  const keys = keyPath.split(".");
+  let current = obj;
+  for (const key of keys) {
+    if (current[key] === undefined) return undefined;
+    current = current[key];
+  }
+  return current;
 };
 
-// Function to extract translation keys from files
-const extractTranslationKeys = (filePath) => {
-	const content = fs.readFileSync(filePath, "utf-8");
-	const regex = /t\(['"`]([^'"`]+)['"`]\)/g;
-	let match;
-	const keys = [];
-	while ((match = regex.exec(content)) !== null) {
-		keys.push(match[1]);
-	}
-	return keys;
+const setNestedValue = (obj, keyPath, value) => {
+  const keys = keyPath.split(".");
+  let current = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (!current[key] || typeof current[key] !== "object") {
+      current[key] = {};
+    }
+    current = current[key];
+  }
+  current[keys[keys.length - 1]] = value;
 };
 
-// Function to generate an object with missing keys and empty string values
-const generateMissingKeysObject = (keys) => {
-	return keys.reduce((obj, key) => {
-		const keyParts = key.split(".");
-		keyParts.reduce((nestedObj, part, index) => {
-			if (index === keyParts.length - 1) {
-				nestedObj[part] = "";
-			} else {
-				nestedObj[part] = nestedObj[part] || {};
-			}
-			return nestedObj[part];
-		}, obj);
-		return obj;
-	}, {});
-};
-
-// Check if files exist
-if (!fs.existsSync(baseFilePath)) {
-	console.error(`Base language file ${baseFilePath} not found!`);
-	process.exit(1);
+async function translateText(text, sourceLang, targetLang) {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const prompt = `Translate the following text from ${sourceLang} to ${targetLang}. Only respond with the translated text, nothing else. Text: ${text}`;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
+  } catch (error) {
+    console.error("Translation error:", error);
+    return null;
+  }
 }
 
-if (!fs.existsSync(compareFilePath)) {
-	console.error(`Compare language file ${compareFilePath} not found!`);
-	process.exit(1);
-}
+(async () => {
+  try {
+    // Check if files exist
+    if (!fs.existsSync(baseFilePath) || !fs.existsSync(compareFilePath)) {
+      console.error("Language files not found!");
+      process.exit(1);
+    }
 
-try {
-	// Read and parse translation files
-	const enKeys = getKeys(JSON.parse(fs.readFileSync(baseFilePath, "utf-8")));
-	const arKeys = getKeys(
-		JSON.parse(fs.readFileSync(compareFilePath, "utf-8")),
-	);
+    // Load translation files
+    const enObj = JSON.parse(fs.readFileSync(baseFilePath, "utf-8"));
+    const arObj = JSON.parse(fs.readFileSync(compareFilePath, "utf-8"));
 
-	// Read all files in the app directory
-	const appDir = path.join(__dirname, translationsConfig.codeBase);
-	const files = readFilesRecursively(appDir);
+    // Get keys from both files
+    const enKeys = getKeys(enObj);
+    const arKeys = getKeys(arObj);
 
-	// Extract translation keys from all files
-	const fileKeys = files.reduce((keys, file) => {
-		if (file.endsWith(".tsx") || file.endsWith(".ts")) {
-			keys.push(...extractTranslationKeys(file));
-		}
-		return keys;
-	}, []);
+    // Find missing keys
+    const missingInAr = enKeys.filter((key) => !arKeys.includes(key));
+    const missingInEn = arKeys.filter((key) => !enKeys.includes(key));
 
-	// Find missing keys in both directions
-	const missingInAr = fileKeys.filter((key) => !arKeys.includes(key));
-	const missingInEn = fileKeys.filter((key) => !enKeys.includes(key));
+    let hasErrors = false;
 
-	let hasErrors = false;
+    // Translate missing keys in Arabic file
+    if (missingInAr.length > 0) {
+      console.log(
+        `\nTranslating ${missingInAr.length} keys to ${compareLanguage}:`,
+      );
+      for (const key of missingInAr) {
+        const value = getNestedValue(enObj, key);
+        if (!value) {
+          console.error(`Skipping ${key} - source value not found`);
+          continue;
+        }
 
-	if (missingInAr.length > 0) {
-		console.log(
-			"\x1b[31m%s\x1b[0m",
-			`\nMissing keys in ${compareLanguage}.json:`,
-		);
-		console.log(missingInAr.join("\n"));
-		const missingArObject = generateMissingKeysObject(missingInAr);
-		fs.writeFileSync(
-			path.join(localesDir, `missing_${compareLanguage}.json`),
-			JSON.stringify(missingArObject, null, 2),
-		);
-		hasErrors = true;
-	}
+        const translated = await translateText(
+          value,
+          baseLanguage,
+          compareLanguage,
+        );
+        if (translated) {
+          setNestedValue(arObj, key, translated);
+          console.log(`✓ ${key}: ${translated}`);
+        } else {
+          hasErrors = true;
+          console.error(`✗ Failed to translate: ${key}`);
+        }
+      }
+      fs.writeFileSync(compareFilePath, JSON.stringify(arObj, null, 2));
+    }
 
-	if (missingInEn.length > 0) {
-		console.log(
-			"\x1b[31m%s\x1b[0m",
-			`\nMissing keys in ${baseLanguage}.json:`,
-		);
-		console.log(missingInEn.join("\n"));
-		const missingEnObject = generateMissingKeysObject(missingInEn);
-		fs.writeFileSync(
-			path.join(localesDir, `missing_${baseLanguage}.json`),
-			JSON.stringify(missingEnObject, null, 2),
-		);
-		hasErrors = true;
-	}
+    // Translate missing keys in English file
+    if (missingInEn.length > 0) {
+      console.log(
+        `\nTranslating ${missingInEn.length} keys to ${baseLanguage}:`,
+      );
+      for (const key of missingInEn) {
+        const value = getNestedValue(arObj, key);
+        if (!value) {
+          console.error(`Skipping ${key} - source value not found`);
+          continue;
+        }
 
-	if (!hasErrors) {
-		console.log(
-			"\x1b[32m%s\x1b[0m",
-			"\nAll translation keys are present in both files",
-		);
-		process.exit(0);
-	} else {
-		process.exit(1);
-	}
-} catch (error) {
-	console.error(
-		"\x1b[31m%s\x1b[0m",
-		"Error processing translation files:",
-		error.message,
-	);
-	process.exit(1);
-}
+        const translated = await translateText(
+          value,
+          compareLanguage,
+          baseLanguage,
+        );
+        if (translated) {
+          setNestedValue(enObj, key, translated);
+          console.log(`✓ ${key}: ${translated}`);
+        } else {
+          hasErrors = true;
+          console.error(`✗ Failed to translate: ${key}`);
+        }
+      }
+      fs.writeFileSync(baseFilePath, JSON.stringify(enObj, null, 2));
+    }
+
+    // Final status
+    if (!hasErrors && !missingInAr.length && !missingInEn.length) {
+      console.log(
+        "\x1b[32m%s\x1b[0m",
+        "\nAll translation keys are synchronized",
+      );
+      process.exit(0);
+    } else if (hasErrors) {
+      console.log("\x1b[31m%s\x1b[0m", "\nCompleted with some errors");
+      process.exit(1);
+    } else {
+      console.log(
+        "\x1b[32m%s\x1b[0m",
+        "\nMissing keys were successfully translated and added",
+      );
+      process.exit(0);
+    }
+  } catch (error) {
+    console.error("\x1b[31m%s\x1b[0m", "Error:", error.message);
+    process.exit(1);
+  }
+})();
