@@ -1,3 +1,5 @@
+### THIS README IS NOT UPDATED BUT CODE IS
+
 ### Prerequisites
 
 -Ensure that you have Node.js installed on your machine. you have husky in your
