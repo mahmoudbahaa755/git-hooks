@@ -1,1 +1,6 @@
-'node spell-check.js "$1" ';
+echo "🌐 Checking translation keys..."
+node spell-check.mjs || {
+    echo "❌ Missing translation keys detected"
+    echo "Please add the missing translations before committing"
+    exit 1
+}

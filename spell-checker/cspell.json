@@ -2,6 +2,21 @@
 {
 	"version": "0.2",
 	"language": "en",
-	"words": ["commitlint", "husky", "cspell"],
-	"ignorePaths": ["node_modules/**", "dist/**"]
+	"ignoreRandomStrings": true,
+
+	"words": [
+		"alsdnaljsdnjsbfkbskhfb",
+		"cmdk",
+		"commitlint",
+		"cspell",
+		"husky",
+		"العربية"
+	],
+	"ignorePaths": [
+		"node_modules/**",
+		"dist/**",
+		"public/**",
+		"**/package.json"
+	],
+	"suggestionsTimeout": 500
 }
