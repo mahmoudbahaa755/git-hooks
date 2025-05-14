@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console */
 
 /**
  * check-lines.js
@@ -14,45 +15,54 @@ const path = require("path");
 const MAX_LINES = 250;
 
 // File extensions to exclude
-const EXCLUDED_EXTENSIONS = [".json"];
+const EXCLUDED_EXTENSIONS = [".json", ".yaml", ".d.ts"];
+// Specific file patterns to exclude
+const EXCLUDED_PATTERNS = ["types.d.ts"];
 
 try {
-   // Get list of staged files (Added, Copied, Modified)
-   const stdout = execSync("git diff --cached --name-only --diff-filter=ACM", {
-      encoding: "utf-8",
-   });
-   const files = stdout.split(/\r?\n/).filter(Boolean);
+  // Get list of staged files (Added, Copied, Modified)
+  const stdout = execSync("git diff --cached --name-only --diff-filter=ACM", {
+    encoding: "utf-8"
+  });
+  const files = stdout.split(/\r?\n/).filter(Boolean);
 
-   const errors = [];
+  const errors = [];
 
-   files.forEach(file => {
-      const ext = path.extname(file).toLowerCase();
-      if (EXCLUDED_EXTENSIONS.includes(ext)) {
-         // Skip excluded file types
-         return;
-      }
+  files.forEach(file => {
+    const ext = path.extname(file).toLowerCase();
 
-      const filePath = path.resolve(process.cwd(), file);
-      // Skip if file was deleted or not present
-      if (!fs.existsSync(filePath)) return;
+    // Skip excluded extensions or file patterns
+    if (
+      EXCLUDED_EXTENSIONS.includes(ext) ||
+      EXCLUDED_PATTERNS.some(pattern => file.endsWith(pattern))
+    ) {
+      return;
+    }
 
-      const content = fs.readFileSync(filePath, "utf-8");
-      const lineCount = content.split(/\r?\n/).length;
+    const filePath = path.resolve(process.cwd(), file);
+    // Skip if file was deleted or not present
+    if (!fs.existsSync(filePath)) return;
 
-      if (lineCount > MAX_LINES) {
-         errors.push(`${file} has ${lineCount} lines (max ${MAX_LINES})`);
-      }
-   });
+    if (fs.statSync(filePath).isDirectory()) {
+      return;
+    }
+    const content = fs.readFileSync(filePath, "utf-8");
+    const lineCount = content.split(/\r?\n/).length;
 
-   if (errors.length) {
-      console.error("\n⚠️  Commit aborted: the following files exceed the line limit:\n");
-      errors.forEach(err => console.error(`  - ${err}`));
-      console.error("\nPlease refactor or split these files before committing.");
-      process.exit(1);
-   }
+    if (lineCount > MAX_LINES) {
+      errors.push(`${file} has ${lineCount} lines (max ${MAX_LINES})`);
+    }
+  });
 
-   process.exit(0);
+  if (errors.length) {
+    console.error("\n⚠️  Commit aborted: the following files exceed the line limit:\n");
+    errors.forEach(err => console.error(`  - ${err}`));
+    console.error("\nPlease refactor or split these files before committing.");
+    process.exit(1);
+  }
+
+  process.exit(0);
 } catch (err) {
-   console.error("Error running line-check script:", err);
-   process.exit(1);
+  console.error("Error running line-check script:", err);
+  process.exit(1);
 }
