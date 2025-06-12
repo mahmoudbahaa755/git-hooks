@@ -2,14 +2,13 @@
 
 ### Prerequisites
 
--Ensure that you have Node.js installed on your machine. you have husky in your
-project
+-Ensure that you have Node.js installed on your machine. you have husky in your project
 
 ### Configuration
 
-The `translations.config.ts` file contains the configuration for the translation
-key checks. You can specify the directory containing the translation files, the
-base language, the comparison language, and the code base directory.
+The `translations.config.ts` file contains the configuration for the translation key checks. You can
+specify the directory containing the translation files, the base language, the comparison language,
+and the code base directory.
 
 ```typescript
 // translations.config.ts
@@ -21,5 +20,4 @@ export const translationsConfig = {
 };
 ```
 
-to run it add the this to your project check-missing-translations-keys.js
-install husky add pre-push in .husky
+to run it add the this to your project auto-translate.js install husky add pre-push in .husky
