@@ -4,19 +4,7 @@
 	"language": "en",
 	"ignoreRandomStrings": true,
 
-	"words": [
-		"alsdnaljsdnjsbfkbskhfb",
-		"cmdk",
-		"commitlint",
-		"cspell",
-		"husky",
-		"العربية"
-	],
-	"ignorePaths": [
-		"node_modules/**",
-		"dist/**",
-		"public/**",
-		"**/package.json"
-	],
+	"words": ["alsdnaljsdnjsbfkbskhfb", "cmdk", "commitlint", "cspell", "husky", "ACMR"],
+	"ignorePaths": ["node_modules/**", "dist/**", "public/**", "**/package.json", "**/*.json"],
 	"suggestionsTimeout": 500
 }
