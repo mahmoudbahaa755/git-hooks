@@ -20,49 +20,49 @@ const EXCLUDED_EXTENSIONS = [".json", ".yaml", ".d.ts"];
 const EXCLUDED_PATTERNS = ["types.d.ts"];
 
 try {
-  // Get list of staged files (Added, Copied, Modified)
-  const stdout = execSync("git diff --cached --name-only --diff-filter=ACM", {
-    encoding: "utf-8"
-  });
-  const files = stdout.split(/\r?\n/).filter(Boolean);
+	// Get list of staged files (Added, Copied, Modified)
+	const stdout = execSync("git diff --cached --name-only --diff-filter=ACM", {
+		encoding: "utf-8",
+	});
+	const files = stdout.split(/\r?\n/).filter(Boolean);
 
-  const errors = [];
+	const errors = [];
 
-  files.forEach(file => {
-    const ext = path.extname(file).toLowerCase();
+	files.forEach((file) => {
+		const ext = path.extname(file).toLowerCase();
 
-    // Skip excluded extensions or file patterns
-    if (
-      EXCLUDED_EXTENSIONS.includes(ext) ||
-      EXCLUDED_PATTERNS.some(pattern => file.endsWith(pattern))
-    ) {
-      return;
-    }
+		// Skip excluded extensions or file patterns
+		if (
+			EXCLUDED_EXTENSIONS.includes(ext) ||
+			EXCLUDED_PATTERNS.some((pattern) => file.endsWith(pattern))
+		) {
+			return;
+		}
 
-    const filePath = path.resolve(process.cwd(), file);
-    // Skip if file was deleted or not present
-    if (!fs.existsSync(filePath)) return;
+		const filePath = path.resolve(process.cwd(), file);
+		// Skip if file was deleted or not present
+		if (!fs.existsSync(filePath)) return;
 
-    if (fs.statSync(filePath).isDirectory()) {
-      return;
-    }
-    const content = fs.readFileSync(filePath, "utf-8");
-    const lineCount = content.split(/\r?\n/).length;
+		if (fs.statSync(filePath).isDirectory()) {
+			return;
+		}
+		const content = fs.readFileSync(filePath, "utf-8");
+		const lineCount = content.split(/\r?\n/).length;
 
-    if (lineCount > MAX_LINES) {
-      errors.push(`${file} has ${lineCount} lines (max ${MAX_LINES})`);
-    }
-  });
+		if (lineCount > MAX_LINES) {
+			errors.push(`${file} has ${lineCount} lines (max ${MAX_LINES})`);
+		}
+	});
 
-  if (errors.length) {
-    console.error("\n⚠️  Commit aborted: the following files exceed the line limit:\n");
-    errors.forEach(err => console.error(`  - ${err}`));
-    console.error("\nPlease refactor or split these files before committing.");
-    process.exit(1);
-  }
+	if (errors.length) {
+		console.error("\n⚠️  Commit aborted: the following files exceed the line limit:\n");
+		errors.forEach((err) => console.error(`  - ${err}`));
+		console.error("\nPlease refactor or split these files before committing.");
+		process.exit(1);
+	}
 
-  process.exit(0);
+	process.exit(0);
 } catch (err) {
-  console.error("Error running line-check script:", err);
-  process.exit(1);
+	console.error("Error running line-check script:", err);
+	process.exit(1);
 }
