@@ -3,8 +3,7 @@
 	"version": "0.2",
 	"language": "en",
 	"ignoreRandomStrings": true,
-
-	"words": ["alsdnaljsdnjsbfkbskhfb", "cmdk", "commitlint", "cspell", "husky", "ACMR"],
+	"words": ["alsdnaljsdnjsbfkbskhfb", "cmdk", "commitlint", "cspell", "husky", "ACMR", "embla"],
 	"ignorePaths": ["node_modules/**", "dist/**", "public/**", "**/package.json", "**/*.json"],
 	"suggestionsTimeout": 500
 }
