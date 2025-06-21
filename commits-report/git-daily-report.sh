@@ -13,10 +13,12 @@ if [ -z "$user_name" ]; then
     exit 1
 fi
 
-# Get current date in ISO format
+# Get number of days before today (default is 0)
+days_ago=${1:-0}
+since_date=$(date -d "$days_ago days ago" +"%Y-%m-%d")
 today=$(date +"%Y-%m-%d")
 now=$(date +"%Y-%m-%d %H:%M")
-output_file="Git_Report_${today}.txt"
+output_file="Git_Report_${today}_since_${since_date}.txt"
 
 # Create header
 {
@@ -25,6 +27,7 @@ output_file="Git_Report_${today}.txt"
     echo "╠══════════════════════════════════════════════════╣"
     echo "║  Developer: $user_name"
     echo "║  Date:      $today"
+    echo "║  Since:     $since_date"
     echo "║  Generated: $now"
     echo "╚══════════════════════════════════════════════════╝"
     echo ""
@@ -33,7 +36,7 @@ output_file="Git_Report_${today}.txt"
 # Process Git logs
 git log \
     --author="$user_name" \
-    --since="midnight" \
+    --since="$since_date 00:00" \
     --reverse \
     --pretty=format:"%ad|%h|%s" \
     --date=iso \
